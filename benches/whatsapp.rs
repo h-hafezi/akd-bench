@@ -9,6 +9,7 @@ use akd::ecvrf::HardCodedAkdVRF;
 use akd::{AkdLabel, AkdValue, EpochHash, HistoryParams};
 use akd::directory::Directory;
 use bincode;
+use rayon::prelude::*;
 
 type Config = akd::WhatsAppV1Configuration;
 
@@ -32,17 +33,21 @@ fn setup_dir_and_publish(n: usize) -> (Directory<Config, AsyncInMemoryDatabase, 
             .expect("Could not create directory");
 
         // Generate entries
-        let mut entries = Vec::with_capacity(n);
-        let mut keys = Vec::with_capacity(n);
-        for i in 0..n {
-            let key = format!("key_{i}");
-            let val = format!("value_{i}");
-            keys.push(key.clone());
-            entries.push((
-                AkdLabel::from(key.as_str()),
-                AkdValue::from(val.as_str()),
-            ));
-        }
+        let (keys, entries): (Vec<_>, Vec<_>) = (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let key = format!("key_{i}");
+                let val = format!("value_{i}");
+                (
+                    key.clone(),
+                    (
+                        AkdLabel::from(key.as_str()),
+                        AkdValue::from(val.as_str()),
+                    ),
+                )
+            })
+            .unzip();
+
 
         let epoch_hash = match akd.publish(entries).await {
             Ok(eh) => eh,
