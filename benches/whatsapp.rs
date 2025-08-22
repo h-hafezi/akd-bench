@@ -1,7 +1,6 @@
 // benches/akd_bench.rs
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::{Duration, Instant};
-use std::mem;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use akd::storage::StorageManager;
@@ -16,7 +15,7 @@ type Config = akd::WhatsAppV1Configuration;
 // === TUNE THESE ===
 const N: usize = 1_000_000_000; // number of initial keys (set to desired N)
 const LOOKUP_PROBES: usize = 10; // number of random lookups to benchmark
-const UPDATE_ROUNDS: usize = 10; // change one key this many times
+const UPDATE_ROUNDS: usize = 20; // change one key this many times
 const AUDIT_UPDATES: usize = 2000 * 60 * 10; // as you requested (1_200_000)
 const RNG_SEED: u64 = 42;
 // ===================
@@ -28,7 +27,7 @@ fn setup_dir_and_publish(n: usize) -> (Directory<Config, AsyncInMemoryDatabase, 
         let db = AsyncInMemoryDatabase::new();
         let storage_manager = StorageManager::new_no_cache(db);
         let vrf = HardCodedAkdVRF {};
-        let mut akd = Directory::<Config, _, _>::new(storage_manager, vrf)
+        let akd = Directory::<Config, _, _>::new(storage_manager, vrf)
             .await
             .expect("Could not create directory");
 
@@ -59,7 +58,7 @@ fn bench_akd(c: &mut Criterion) {
     // For heavy N you may prefer to create directory in a separate machine step.
     // We'll measure operations after the initial publish.
     eprintln!("Setting up directory and publishing N = {N} entries (this may take a while)...");
-    let (mut akd, initial_epoch_hash, keys) = setup_dir_and_publish(N);
+    let (akd, initial_epoch_hash, keys) = setup_dir_and_publish(N);
     eprintln!("Done initial publish: epoch {:?}", initial_epoch_hash);
 
     // Make a tokio runtime to use during benchmark iterations
